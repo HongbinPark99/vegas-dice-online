@@ -69,7 +69,7 @@ html, body {
 .lobby-actions { display: flex; gap: 10px; justify-content: center; margin-top: 10px; }
 
 /* ---- Game screen ---- */
-#screen-game flex-direction: column; { align-items: stretch; padding: 0; }
+#screen-game { flex-direction: column; align-items: stretch; padding: 0; }
 .game-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 10px 20px; background: #0a1f16; border-bottom: 2px solid #d4af37;
