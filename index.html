@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vegas Dice Online</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div id="toast" class="toast hidden"></div>
+
+<!-- ===== 시작 화면 ===== -->
+<section id="screen-landing" class="screen">
+  <div class="landing-card">
+    <h1>🎲 VEGAS DICE <span>ONLINE</span></h1>
+    <p class="subtitle">라스베가스 다이스 보드게임 — 친구들과 온라인 멀티플레이</p>
+
+    <div class="field">
+      <label>닉네임</label>
+      <input id="input-name" type="text" maxlength="20" placeholder="예: 홍빈" />
+    </div>
+
+    <div class="landing-actions">
+      <button id="btn-create" class="btn btn-primary">방 만들기</button>
+
+      <div class="join-row">
+        <input id="input-code" type="text" maxlength="4" placeholder="방 코드 (4자리)" style="text-transform:uppercase" />
+        <button id="btn-join" class="btn">참가하기</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 로비 화면 ===== -->
+<section id="screen-lobby" class="screen hidden">
+  <div class="lobby-card">
+    <h2>방 코드: <span id="lobby-code">----</span></h2>
+    <p class="hint">친구에게 이 코드를 알려주고 "참가하기"로 입장하게 하세요.</p>
+
+    <ul id="lobby-players" class="player-list"></ul>
+
+    <div class="lobby-actions">
+      <button id="btn-ready" class="btn">준비 완료</button>
+      <button id="btn-start" class="btn btn-primary hidden">게임 시작</button>
+    </div>
+    <p class="hint" id="lobby-note">최소 2명, 최대 6명. 방장 외 전원 준비 완료 시 방장이 시작할 수 있습니다.</p>
+  </div>
+</section>
+
+<!-- ===== 게임 화면 ===== -->
+<section id="screen-game" class="screen hidden">
+  <header class="game-header">
+    <div class="round-badge">ROUND <span id="round-num">1</span> / <span id="round-total">4</span></div>
+    <div id="turn-indicator" class="turn-indicator">-</div>
+    <button id="btn-leave" class="btn btn-small">나가기</button>
+  </header>
+
+  <main class="game-main">
+    <div class="casino-board" id="casino-board"></div>
+
+    <aside class="side-panel">
+      <div class="players-panel" id="players-panel"></div>
+
+      <div class="action-panel" id="action-panel">
+        <button id="btn-roll" class="btn btn-primary btn-big hidden">🎲 굴리기</button>
+        <div id="roll-result" class="roll-result hidden"></div>
+        <div id="choice-buttons" class="choice-buttons hidden"></div>
+        <div id="waiting-msg" class="waiting-msg hidden">다른 플레이어의 차례입니다...</div>
+      </div>
+
+      <div class="log-panel">
+        <div class="log-title">진행 로그</div>
+        <div id="log-list" class="log-list"></div>
+      </div>
+
+      <div class="chat-panel">
+        <div id="chat-list" class="chat-list"></div>
+        <div class="chat-input-row">
+          <input id="input-chat" type="text" maxlength="300" placeholder="채팅..." />
+          <button id="btn-chat-send" class="btn btn-small">전송</button>
+        </div>
+      </div>
+    </aside>
+  </main>
+</section>
+
+<!-- ===== 라운드 종료 오버레이 ===== -->
+<div id="overlay-round" class="overlay hidden">
+  <div class="overlay-card">
+    <h2 id="overlay-round-title">1라운드 결과</h2>
+    <div id="overlay-round-body" class="payout-grid"></div>
+    <button id="btn-next-round" class="btn btn-primary">다음 라운드</button>
+  </div>
+</div>
+
+<!-- ===== 게임 종료 오버레이 ===== -->
+<div id="overlay-final" class="overlay hidden">
+  <div class="overlay-card">
+    <h2>🏆 게임 종료</h2>
+    <div id="overlay-final-body"></div>
+    <button id="btn-back-lobby" class="btn btn-primary">처음으로</button>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="client.js"></script>
+</body>
+</html>
