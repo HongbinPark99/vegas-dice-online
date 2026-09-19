@@ -133,37 +133,36 @@ class VegasGame {
     }
     this.phase = 'awaiting_roll';
     this.currentRoll = null;
-    this._autoPlayDummyTurns();
   }
 
-  /** Dummy ("더미") players auto-play instantly: roll, then greedily place the
-   * face value with the most matching dice (ties broken toward the higher casino
-   * number). This is the balancing variant used with 2-3 real players. */
-  _autoPlayDummyTurns() {
-    while (
+  /** True while it's a dummy ("더미") player's turn to roll. The server drives dummy
+   * turns on a short timer (see server.js) so every viewer sees the same roll-tumble
+   * and dice-choice animation a human's turn would produce, instead of the dummy's
+   * move resolving invisibly between broadcasts. */
+  isDummyTurn() {
+    return !!(
       this.phase === 'awaiting_roll' &&
       this.currentPlayerId &&
       this.players[this.currentPlayerId] &&
       this.players[this.currentPlayerId].isDummy
-    ) {
-      const pid = this.currentPlayerId;
-      this.rollDice(pid);
-      const roll = this.currentRoll;
-      const avail = this.availableValuesFromRoll();
-      let bestValue = avail[0];
-      let bestCount = -1;
-      avail.forEach((v) => {
-        const c = roll.filter((x) => x === v).length;
-        if (c > bestCount || (c === bestCount && v > bestValue)) {
-          bestCount = c;
-          bestValue = v;
-        }
-      });
-      this.chooseValue(pid, bestValue);
-      // chooseValue -> _advanceToNextActivePlayer already recurses into this method,
-      // so by the time it returns here the loop condition below will naturally be false
-      // unless somehow still a dummy's turn (safe to just re-check and continue).
-    }
+    );
+  }
+
+  /** Picks (without applying) the dummy's move: the face value with the most
+   * matching dice in the current roll, ties broken toward the higher casino number. */
+  pickDummyValue() {
+    const roll = this.currentRoll;
+    const avail = this.availableValuesFromRoll();
+    let bestValue = avail[0];
+    let bestCount = -1;
+    avail.forEach((v) => {
+      const c = roll.filter((x) => x === v).length;
+      if (c > bestCount || (c === bestCount && v > bestValue)) {
+        bestCount = c;
+        bestValue = v;
+      }
+    });
+    return bestValue;
   }
 
   get currentPlayerId() {
