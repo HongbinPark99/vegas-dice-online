@@ -16,6 +16,14 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const manager = new RoomManager();
 
+// A "더미" (dummy/bot) player's turn used to resolve invisibly, all in one server tick,
+// so viewers only ever saw the result after the fact. To make computer turns look and
+// feel exactly like a human's — the same roll-tumble, grouped-dice reveal, and casino
+// placement pulse — we drive the roll and the choice as two separate steps on a short
+// timer, broadcasting the game state in between just like a real player's actions do.
+const DUMMY_ROLL_DELAY_MS = 700; // pause before the computer "rolls", like a person taking a beat
+const DUMMY_CHOICE_DELAY_MS = 1600; // time to let the roll/grouping animation be seen before it "chooses"
+
 function broadcastLobby(room) {
   io.to(room.code).emit('lobby_state', room.toLobbyState());
 }
@@ -23,6 +31,38 @@ function broadcastLobby(room) {
 function broadcastGame(room) {
   if (!room.game) return;
   io.to(room.code).emit('game_state', room.game.getState());
+}
+
+function scheduleDummyTurn(room) {
+  const game = room.game;
+  if (!game || !game.isDummyTurn()) return;
+  const pid = game.currentPlayerId;
+
+  setTimeout(() => {
+    const liveRoom = manager.getRoomByCode(room.code);
+    if (!liveRoom || liveRoom.game !== game) return; // room gone or game reset since scheduling
+    if (game.phase !== 'awaiting_roll' || game.currentPlayerId !== pid) return; // state moved on already
+    try {
+      game.rollDice(pid);
+    } catch (err) {
+      return;
+    }
+    broadcastGame(liveRoom);
+
+    setTimeout(() => {
+      const liveRoom2 = manager.getRoomByCode(room.code);
+      if (!liveRoom2 || liveRoom2.game !== game) return;
+      if (game.phase !== 'awaiting_choice' || game.currentPlayerId !== pid) return;
+      try {
+        const value = game.pickDummyValue();
+        game.chooseValue(pid, value);
+      } catch (err) {
+        return;
+      }
+      broadcastGame(liveRoom2);
+      scheduleDummyTurn(liveRoom2); // chain into the next turn, if that's a dummy's too
+    }, DUMMY_CHOICE_DELAY_MS);
+  }, DUMMY_ROLL_DELAY_MS);
 }
 
 function safeHandler(socket, handler) {
@@ -73,6 +113,7 @@ io.on('connection', (socket) => {
     manager.startGame(room, socket.id);
     broadcastLobby(room);
     broadcastGame(room);
+    scheduleDummyTurn(room);
   }));
 
   socket.on('roll_dice', safeHandler(socket, () => {
@@ -87,6 +128,7 @@ io.on('connection', (socket) => {
     if (!room || !room.game) throw new Error('게임이 시작되지 않았습니다.');
     room.game.chooseValue(socket.id, Number(value));
     broadcastGame(room);
+    scheduleDummyTurn(room);
   }));
 
   socket.on('next_round', safeHandler(socket, () => {
@@ -94,6 +136,7 @@ io.on('connection', (socket) => {
     if (!room || !room.game) throw new Error('게임이 시작되지 않았습니다.');
     room.game.startNextRound();
     broadcastGame(room);
+    scheduleDummyTurn(room);
   }));
 
   socket.on('chat_message', safeHandler(socket, ({ text }) => {
@@ -109,6 +152,7 @@ io.on('connection', (socket) => {
     if (room) {
       broadcastLobby(room);
       broadcastGame(room);
+      scheduleDummyTurn(room);
     }
   });
 });
