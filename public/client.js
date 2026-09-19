@@ -12,6 +12,30 @@
   const show = (el) => el.classList.remove('hidden');
   const hide = (el) => el.classList.add('hidden');
 
+  // ---------- dice pip rendering ----------
+  const PIP_MAP = {
+    1: [5],
+    2: [1, 9],
+    3: [1, 5, 9],
+    4: [1, 3, 7, 9],
+    5: [1, 3, 5, 7, 9],
+    6: [1, 3, 4, 6, 7, 9],
+  };
+  function dieFaceHtml(value, extraClass) {
+    const on = new Set(PIP_MAP[value] || []);
+    let cells = '';
+    for (let i = 1; i <= 9; i++) cells += `<span class="pip${on.has(i) ? ' on' : ''}"></span>`;
+    return `<div class="die-pip${extraClass ? ' ' + extraClass : ''}"><div class="pip-grid">${cells}</div></div>`;
+  }
+  function groupDice(roll) {
+    const counts = {};
+    roll.forEach((v) => { counts[v] = (counts[v] || 0) + 1; });
+    return Object.keys(counts)
+      .map(Number)
+      .sort((a, b) => counts[b] - counts[a] || b - a)
+      .map((v) => ({ value: v, count: counts[v] }));
+  }
+
   function toast(msg) {
     const el = $('#toast');
     el.textContent = msg;
@@ -118,14 +142,26 @@
     return p ? p.color : '#fff';
   }
 
+  let prevPlacedTotals = null; // casino number -> total dice placed there (for placement pulse)
+  let dealAnimatedRound = null; // last round number whose initial bill-deal animation already played
+
   function renderCasinoBoard(state) {
     const board = $('#casino-board');
     board.innerHTML = '';
-    state.casinos.forEach((casino) => {
+
+    const isFreshRound = dealAnimatedRound !== state.round &&
+      state.casinos.every((c) => state.players.every((p) => !(p.placed && p.placed[c.number])));
+    if (isFreshRound) dealAnimatedRound = state.round;
+
+    const newPlacedTotals = {};
+
+    state.casinos.forEach((casino, ci) => {
       const div = document.createElement('div');
       div.className = 'casino';
 
-      const billsHtml = casino.bills.map((b) => `<div class="bill">${(b / 1000)}k</div>`).join('') || '<div class="bill" style="opacity:.4">없음</div>';
+      const billsHtml = casino.bills
+        .map((b, bi) => `<div class="bill${isFreshRound ? ' deal' : ''}" style="animation-delay:${ci * 45 + bi * 90}ms">${(b / 1000)}k</div>`)
+        .join('') || '<div class="bill empty">없음</div>';
 
       // dice placed on this casino, grouped by player
       const rows = state.players
@@ -138,6 +174,13 @@
           </div>`)
         .join('');
 
+      const total = state.players.reduce((sum, p) => sum + (p.placed[casino.number] || 0), 0);
+      newPlacedTotals[casino.number] = total;
+      if (prevPlacedTotals && prevPlacedTotals[casino.number] !== undefined && total > prevPlacedTotals[casino.number]) {
+        div.classList.add('pulse');
+        setTimeout(() => div.classList.remove('pulse'), 900);
+      }
+
       div.innerHTML = `
         <div class="casino-num">${casino.number}</div>
         <div class="casino-bills">${billsHtml}</div>
@@ -145,6 +188,8 @@
       `;
       board.appendChild(div);
     });
+
+    prevPlacedTotals = newPlacedTotals;
   }
 
   function renderPlayers(state) {
@@ -163,46 +208,92 @@
     });
   }
 
+  let lastRollFingerprint = null;
+  let rollRevealTimer = null;
+  let rollTumbleInterval = null;
+
+  // Render the final, grouped-by-value dice result (pip faces clustered, biggest group starred).
+  function renderDiceTray(container, state, isMyTurn) {
+    const groups = groupDice(state.currentRoll);
+    const maxCount = Math.max(...groups.map((g) => g.count));
+    container.innerHTML = `<div class="dice-tray">${groups
+      .map((g, i) => {
+        const usable = state.availableValues.includes(g.value);
+        const isBest = g.count === maxCount;
+        const clickable = isMyTurn && usable;
+        return `<div class="dice-group${clickable ? ' clickable' : ''}${isBest ? ' best' : ''}"
+                     data-value="${g.value}" style="animation-delay:${i * 70}ms">
+            ${isBest ? '<span class="best-badge">★</span>' : ''}
+            <div class="dice-group-dice">${Array.from({ length: g.count }).map(() => dieFaceHtml(g.value)).join('')}</div>
+            <div class="dice-group-label">${g.value}번 카지노 <span class="count-badge">×${g.count}</span></div>
+          </div>`;
+      })
+      .join('')}</div>`;
+    if (isMyTurn) {
+      container.querySelectorAll('.dice-group.clickable').forEach((el) => {
+        el.addEventListener('click', () => socket.emit('choose_value', { value: Number(el.dataset.value) }));
+      });
+    }
+  }
+
+  // Briefly show a tumbling placeholder before revealing the actual (already-server-decided) roll.
+  function playRollAnimation(container, state, isMyTurn) {
+    clearTimeout(rollRevealTimer);
+    clearInterval(rollTumbleInterval);
+    const n = state.currentRoll.length;
+    const renderTumbleFrame = () => {
+      container.innerHTML = `<div class="dice-tray tumbling">${Array.from({ length: n })
+        .map(() => dieFaceHtml(1 + Math.floor(Math.random() * 6)))
+        .join('')}</div>`;
+    };
+    renderTumbleFrame();
+    let ticks = 0;
+    rollTumbleInterval = setInterval(() => {
+      ticks++;
+      renderTumbleFrame();
+      if (ticks >= 4) clearInterval(rollTumbleInterval);
+    }, 110);
+    rollRevealTimer = setTimeout(() => {
+      clearInterval(rollTumbleInterval);
+      renderDiceTray(container, state, isMyTurn);
+    }, 520);
+  }
+
   function renderActionPanel(state) {
     const isMyTurn = state.currentPlayerId === myId;
     const rollBtn = $('#btn-roll');
     const rollResult = $('#roll-result');
-    const choiceButtons = $('#choice-buttons');
     const waitingMsg = $('#waiting-msg');
 
-    hide(rollBtn); hide(rollResult); hide(choiceButtons); hide(waitingMsg);
+    hide(rollBtn); hide(rollResult); hide(waitingMsg);
 
     if (state.phase === 'round_end' || state.phase === 'game_over') {
+      clearTimeout(rollRevealTimer);
+      clearInterval(rollTumbleInterval);
+      lastRollFingerprint = null;
       return;
     }
 
     if (!isMyTurn) {
       waitingMsg.textContent = `${playerName(state.currentPlayerId)}의 차례입니다...`;
       show(waitingMsg);
-      if (state.currentRoll) {
-        rollResult.innerHTML = state.currentRoll.map((v) => `<div class="roll-die">${v}</div>`).join('');
-        show(rollResult);
-      }
-      return;
     }
 
     if (state.phase === 'awaiting_roll') {
-      show(rollBtn);
-    } else if (state.phase === 'awaiting_choice') {
-      rollResult.innerHTML = state.currentRoll.map((v) =>
-        `<div class="roll-die${state.availableValues.includes(v) ? ' usable' : ''}">${v}</div>`).join('');
-      show(rollResult);
+      if (isMyTurn) show(rollBtn);
+      lastRollFingerprint = null;
+      return;
+    }
 
-      choiceButtons.innerHTML = '';
-      state.availableValues.forEach((v) => {
-        const count = state.currentRoll.filter((x) => x === v).length;
-        const btn = document.createElement('button');
-        btn.className = 'choice-btn';
-        btn.textContent = `${v}번 카지노에 ${count}개 놓기`;
-        btn.addEventListener('click', () => socket.emit('choose_value', { value: v }));
-        choiceButtons.appendChild(btn);
-      });
-      show(choiceButtons);
+    if (state.phase === 'awaiting_choice' && state.currentRoll) {
+      show(rollResult);
+      const fp = `${state.round}|${state.currentPlayerId}|${state.currentRoll.join(',')}`;
+      if (fp !== lastRollFingerprint) {
+        lastRollFingerprint = fp;
+        playRollAnimation(rollResult, state, isMyTurn);
+      } else if (!rollResult.querySelector('.dice-group')) {
+        renderDiceTray(rollResult, state, isMyTurn);
+      }
     }
   }
 
@@ -219,13 +310,23 @@
 
     $('#overlay-round-title').textContent = `${state.lastPayout.round}라운드 결과`;
     const body = $('#overlay-round-body');
-    body.innerHTML = state.lastPayout.casinos.map((c) => {
+    body.innerHTML = state.lastPayout.casinos.map((c, ci) => {
       const lines = [];
-      c.awards.forEach((a) => lines.push(`<div class="payout-line"><span>${playerName(a.playerId)} (🎲${a.dice})</span><span>${fmtMoney(a.amount)}</span></div>`));
-      c.discarded.forEach((d) => lines.push(`<div class="payout-line discard"><span>동점 소멸</span><span>${fmtMoney(d)}</span></div>`));
-      c.carried.forEach((cv) => lines.push(`<div class="payout-line carry"><span>다음 라운드로 이월</span><span>${fmtMoney(cv)}</span></div>`));
-      if (lines.length === 0) lines.push('<div class="payout-line"><span>참가자 없음</span><span>-</span></div>');
-      return `<div class="payout-casino"><div class="title">${c.number}번 카지노</div>${lines.join('')}</div>`;
+      let li = 0;
+      c.awards.forEach((a) => {
+        lines.push(`<div class="payout-line" style="animation-delay:${li * 90}ms"><span>${playerName(a.playerId)} (🎲${a.dice})</span><span class="amount-chip">${fmtMoney(a.amount)}</span></div>`);
+        li++;
+      });
+      c.discarded.forEach((d) => {
+        lines.push(`<div class="payout-line discard" style="animation-delay:${li * 90}ms"><span>동점 소멸</span><span class="amount-chip">${fmtMoney(d)}</span></div>`);
+        li++;
+      });
+      c.carried.forEach((cv) => {
+        lines.push(`<div class="payout-line carry" style="animation-delay:${li * 90}ms"><span>다음 라운드로 이월</span><span class="amount-chip">${fmtMoney(cv)}</span></div>`);
+        li++;
+      });
+      if (lines.length === 0) lines.push('<div class="payout-line" style="opacity:1"><span>참가자 없음</span><span>-</span></div>');
+      return `<div class="payout-casino" style="animation-delay:${ci * 80}ms"><div class="title">${c.number}번 카지노</div>${lines.join('')}</div>`;
     }).join('');
 
     if (state.round >= state.totalRounds) {
