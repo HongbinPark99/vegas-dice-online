@@ -259,6 +259,11 @@
     }, 520);
   }
 
+  function isDummy(state, id) {
+    const p = state.players.find((pp) => pp.id === id);
+    return !!(p && p.isDummy);
+  }
+
   function renderActionPanel(state) {
     const isMyTurn = state.currentPlayerId === myId;
     const rollBtn = $('#btn-roll');
@@ -274,13 +279,17 @@
       return;
     }
 
-    if (!isMyTurn) {
-      waitingMsg.textContent = `${playerName(state.currentPlayerId)}의 차례입니다...`;
-      show(waitingMsg);
-    }
-
+    // Whoever's turn it is — human or computer ("더미") — rolls and picks a value the
+    // same way: a tumble animation, then the grouped-dice reveal below. Only the
+    // "awaiting_roll" (nobody has rolled yet) moment shows a plain waiting message.
     if (state.phase === 'awaiting_roll') {
-      if (isMyTurn) show(rollBtn);
+      if (isMyTurn) {
+        show(rollBtn);
+      } else {
+        const bot = isDummy(state, state.currentPlayerId) ? '🤖 ' : '';
+        waitingMsg.textContent = `${bot}${playerName(state.currentPlayerId)}의 차례입니다...`;
+        show(waitingMsg);
+      }
       lastRollFingerprint = null;
       return;
     }
@@ -361,7 +370,8 @@
     } else if (state.currentPlayerId === myId) {
       turnEl.textContent = '👉 내 차례입니다!';
     } else {
-      turnEl.textContent = `${playerName(state.currentPlayerId)}의 차례`;
+      const bot = isDummy(state, state.currentPlayerId) ? '🤖 ' : '';
+      turnEl.textContent = `${bot}${playerName(state.currentPlayerId)}의 차례`;
     }
 
     renderCasinoBoard(state);
