@@ -158,16 +158,18 @@
     state.casinos.forEach((casino, ci) => {
       const div = document.createElement('div');
       div.className = 'casino';
+      div.dataset.casino = casino.number;
 
       const billsHtml = casino.bills
         .map((b, bi) => `<div class="bill${isFreshRound ? ' deal' : ''}" style="animation-delay:${ci * 45 + bi * 90}ms">${(b / 1000)}k</div>`)
         .join('') || '<div class="bill empty">없음</div>';
 
-      // dice placed on this casino, grouped by player
+      // dice placed on this casino, grouped by player — each row carries the player's
+      // color as a CSS variable so its dot and mini die tint to match.
       const rows = state.players
         .map((p) => ({ p, count: p.placed[casino.number] || 0 }))
         .filter((r) => r.count > 0)
-        .map((r) => `<div class="casino-dice-row">
+        .map((r) => `<div class="casino-dice-row" style="--pc:${r.p.color}">
             <span class="dot" style="background:${r.p.color}"></span>
             <span>${r.p.name}${r.p.isDummy ? ' 🤖' : ''}</span>
             <span class="die-mini">${r.count}</span>
@@ -198,8 +200,9 @@
     state.players.forEach((p) => {
       const row = document.createElement('div');
       row.className = 'player-row' + (p.id === state.currentPlayerId ? ' active' : '');
+      const initial = (p.name || '?').trim().charAt(0).toUpperCase();
       row.innerHTML = `
-        <span class="player-swatch" style="background:${p.color}"></span>
+        <span class="player-swatch" style="background:${p.color};--pc:${p.color}">${initial}</span>
         <span class="player-name">${p.name}${p.id === myId ? ' (나)' : ''}${p.isDummy ? ' 🤖' : ''}</span>
         <span class="player-dice">🎲${p.diceRemaining}</span>
         <span class="player-money">${fmtMoney(p.money)}</span>
@@ -216,7 +219,8 @@
   function renderDiceTray(container, state, isMyTurn) {
     const groups = groupDice(state.currentRoll);
     const maxCount = Math.max(...groups.map((g) => g.count));
-    container.innerHTML = `<div class="dice-tray">${groups
+    const turnColor = playerColor(state.currentPlayerId);
+    container.innerHTML = `<div class="dice-tray" style="--pc:${turnColor}">${groups
       .map((g, i) => {
         const usable = state.availableValues.includes(g.value);
         const isBest = g.count === maxCount;
@@ -241,8 +245,9 @@
     clearTimeout(rollRevealTimer);
     clearInterval(rollTumbleInterval);
     const n = state.currentRoll.length;
+    const turnColor = playerColor(state.currentPlayerId);
     const renderTumbleFrame = () => {
-      container.innerHTML = `<div class="dice-tray tumbling">${Array.from({ length: n })
+      container.innerHTML = `<div class="dice-tray tumbling" style="--pc:${turnColor}">${Array.from({ length: n })
         .map(() => dieFaceHtml(1 + Math.floor(Math.random() * 6)))
         .join('')}</div>`;
     };
