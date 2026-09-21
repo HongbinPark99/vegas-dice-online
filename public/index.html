@@ -11,6 +11,19 @@
 </head>
 <body>
 
+<!-- 멀리서 보면 엑셀 워크시트처럼 보이는 위장용 배경 (게임 UI 뒤에 고정) -->
+<div id="excel-bg" aria-hidden="true">
+  <div class="excel-ribbon">파일&nbsp;&nbsp;홈&nbsp;&nbsp;삽입&nbsp;&nbsp;페이지 레이아웃&nbsp;&nbsp;수식&nbsp;&nbsp;데이터&nbsp;&nbsp;검토&nbsp;&nbsp;보기</div>
+  <div class="excel-corner"></div>
+  <div id="excel-colheaders" class="excel-colheaders"></div>
+  <div id="excel-rowheaders" class="excel-rowheaders"></div>
+  <div class="excel-grid"></div>
+</div>
+
+<button id="btn-opacity-toggle" class="opacity-toggle-btn" title="화면 투명도 전환">🙈</button>
+
+<div id="app-root">
+
 <div id="toast" class="toast hidden"></div>
 
 <!-- ===== 시작 화면 ===== -->
@@ -140,6 +153,8 @@
     <button id="btn-back-lobby" class="btn btn-primary">처음으로</button>
   </div>
 </div>
+
+</div><!-- /#app-root -->
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="client.js"></script>

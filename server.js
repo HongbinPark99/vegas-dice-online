@@ -35,8 +35,32 @@ function broadcastGame(room) {
 
 function scheduleDummyTurn(room) {
   const game = room.game;
-  if (!game || !game.isDummyTurn()) return;
+  if (!game) return;
   const pid = game.currentPlayerId;
+  if (!pid || !game.isBotControlled(pid)) return;
+
+  // Edge case: a real player already rolled and was about to choose a value
+  // when they disconnected. isDummyTurn() only covers 'awaiting_roll', so
+  // without this the game would stall forever waiting on a choice that will
+  // never come. Finish the turn for them instead.
+  if (game.phase === 'awaiting_choice' && game.currentRoll) {
+    setTimeout(() => {
+      const liveRoom = manager.getRoomByCode(room.code);
+      if (!liveRoom || liveRoom.game !== game) return;
+      if (game.phase !== 'awaiting_choice' || game.currentPlayerId !== pid) return;
+      try {
+        const value = game.pickDummyValue();
+        game.chooseValue(pid, value);
+      } catch (err) {
+        return;
+      }
+      broadcastGame(liveRoom);
+      scheduleDummyTurn(liveRoom);
+    }, DUMMY_CHOICE_DELAY_MS);
+    return;
+  }
+
+  if (!game.isDummyTurn()) return;
 
   setTimeout(() => {
     const liveRoom = manager.getRoomByCode(room.code);
@@ -60,7 +84,7 @@ function scheduleDummyTurn(room) {
         return;
       }
       broadcastGame(liveRoom2);
-      scheduleDummyTurn(liveRoom2); // chain into the next turn, if that's a dummy's too
+      scheduleDummyTurn(liveRoom2); // chain into the next turn, if that's a bot's too
     }, DUMMY_CHOICE_DELAY_MS);
   }, DUMMY_ROLL_DELAY_MS);
 }
@@ -150,6 +174,9 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     const room = manager.removeSocket(socket.id);
     if (room) {
+      if (room.game) {
+        room.game.setAutoPlay(socket.id, true);
+      }
       broadcastLobby(room);
       broadcastGame(room);
       scheduleDummyTurn(room);

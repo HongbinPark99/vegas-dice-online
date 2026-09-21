@@ -98,6 +98,7 @@ class VegasGame {
         name: p.name,
         color,
         isDummy,
+        autoPlay: false, // set true when a real player disconnects mid-game; the server then plays their turns for them
         money: 0,
         diceRemaining: DICE_PER_PLAYER,
         placed: {}, // casinoNumber -> count placed this round
@@ -147,16 +148,36 @@ class VegasGame {
     this.currentRoll = null;
   }
 
-  /** True while it's a dummy ("더미") player's turn to roll. The server drives dummy
-   * turns on a short timer (see server.js) so every viewer sees the same roll-tumble
-   * and dice-choice animation a human's turn would produce, instead of the dummy's
-   * move resolving invisibly between broadcasts. */
+  /** True if this player's turns should be driven by the server automatically —
+   * either an actual "더미" bot, or a real player who disconnected mid-game and
+   * is now being played for so the game doesn't stall waiting on them. */
+  isBotControlled(playerId) {
+    const p = this.players[playerId];
+    return !!(p && (p.isDummy || p.autoPlay));
+  }
+
+  /** Called when a real player's socket disconnects during an active game:
+   * from now on the server plays their turns for them (see server.js), the
+   * same way it already does for "더미" bots. There's no reconnect flow, so
+   * this is permanent for the rest of the game once set. */
+  setAutoPlay(playerId, enabled) {
+    const p = this.players[playerId];
+    if (!p || p.isDummy || p.autoPlay === !!enabled) return;
+    p.autoPlay = !!enabled;
+    if (enabled) {
+      this._pushLog(`${p.name}님의 연결이 끊겨, 이후 턴은 봇이 대신 진행합니다. 🤖`);
+    }
+  }
+
+  /** True while it's a bot-controlled player's turn to roll. The server drives
+   * these turns on a short timer (see server.js) so every viewer sees the same
+   * roll-tumble and dice-choice animation a human's turn would produce, instead
+   * of the move resolving invisibly between broadcasts. */
   isDummyTurn() {
     return !!(
       this.phase === 'awaiting_roll' &&
       this.currentPlayerId &&
-      this.players[this.currentPlayerId] &&
-      this.players[this.currentPlayerId].isDummy
+      this.isBotControlled(this.currentPlayerId)
     );
   }
 
@@ -324,6 +345,7 @@ class VegasGame {
           name: p.name,
           color: p.color,
           isDummy: !!p.isDummy,
+          autoPlay: !!p.autoPlay,
           money: p.money,
           diceRemaining: p.diceRemaining,
           placed: p.placed,

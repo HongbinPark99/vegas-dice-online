@@ -53,6 +53,31 @@
     return n.toLocaleString() + '원';
   }
 
+  // ---------- excel disguise background ----------
+  (function renderExcelDisguise() {
+    const colRow = $('#excel-colheaders');
+    if (colRow) {
+      let html = '';
+      for (let i = 0; i < 26; i++) html += `<div class="excel-col">${String.fromCharCode(65 + i)}</div>`;
+      colRow.innerHTML = html;
+    }
+    const rowCol = $('#excel-rowheaders');
+    if (rowCol) {
+      let html = '';
+      for (let i = 1; i <= 80; i++) html += `<div class="excel-row">${i}</div>`;
+      rowCol.innerHTML = html;
+    }
+  })();
+
+  // ---------- opacity toggle (stealth mode) ----------
+  $('#btn-opacity-toggle').addEventListener('click', () => {
+    const root = $('#app-root');
+    const btn = $('#btn-opacity-toggle');
+    const stealth = root.classList.toggle('stealth');
+    btn.textContent = stealth ? '🙉' : '🙈';
+    btn.title = stealth ? '화면 다시 보이기' : '화면 투명도 전환';
+  });
+
   // ---------- rules overlay ----------
   $('#btn-rules-landing').addEventListener('click', () => show($('#overlay-rules')));
   $('#btn-rules-game').addEventListener('click', () => show($('#overlay-rules')));
@@ -208,7 +233,7 @@
         .filter((r) => r.count > 0)
         .map((r) => `<div class="casino-dice-row" style="--pc:${r.p.color}">
             <span class="dot" style="background:${r.p.color}"></span>
-            <span>${r.p.name}${r.p.isDummy ? ' 🤖' : ''}</span>
+            <span>${r.p.name}${r.p.isDummy ? ' 🤖' : (r.p.autoPlay ? ' 🤖(자동)' : '')}</span>
             <span class="die-mini">${r.count}</span>
           </div>`)
         .join('');
@@ -240,7 +265,7 @@
       const initial = (p.name || '?').trim().charAt(0).toUpperCase();
       row.innerHTML = `
         <span class="player-swatch" style="background:${p.color};--pc:${p.color}">${initial}</span>
-        <span class="player-name">${p.name}${p.id === myId ? ' (나)' : ''}${p.isDummy ? ' 🤖' : ''}</span>
+        <span class="player-name">${p.name}${p.id === myId ? ' (나)' : ''}${p.isDummy ? ' 🤖' : (p.autoPlay ? ' 🤖(자동 진행 중)' : '')}</span>
         <span class="player-dice">🎲${p.diceRemaining}</span>
         <span class="player-money">${fmtMoney(p.money)}</span>
       `;
@@ -305,6 +330,13 @@
     const p = state.players.find((pp) => pp.id === id);
     return !!(p && p.isDummy);
   }
+  function isAutoPlay(state, id) {
+    const p = state.players.find((pp) => pp.id === id);
+    return !!(p && p.autoPlay);
+  }
+  function isBotControlled(state, id) {
+    return isDummy(state, id) || isAutoPlay(state, id);
+  }
 
   function renderActionPanel(state) {
     const isMyTurn = state.currentPlayerId === myId;
@@ -328,7 +360,7 @@
       if (isMyTurn) {
         show(rollBtn);
       } else {
-        const bot = isDummy(state, state.currentPlayerId) ? '🤖 ' : '';
+        const bot = isBotControlled(state, state.currentPlayerId) ? '🤖 ' : '';
         waitingMsg.textContent = `${bot}${playerName(state.currentPlayerId)}의 차례입니다...`;
         show(waitingMsg);
       }
@@ -440,7 +472,7 @@
     } else if (state.currentPlayerId === myId) {
       turnEl.textContent = '👉 내 차례입니다!';
     } else {
-      const bot = isDummy(state, state.currentPlayerId) ? '🤖 ' : '';
+      const bot = isBotControlled(state, state.currentPlayerId) ? '🤖 ' : '';
       turnEl.textContent = `${bot}${playerName(state.currentPlayerId)}의 차례`;
     }
 
