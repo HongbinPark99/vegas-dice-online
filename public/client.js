@@ -69,13 +69,13 @@
     }
   })();
 
-  // ---------- opacity toggle (stealth mode) ----------
-  $('#btn-opacity-toggle').addEventListener('click', () => {
-    const root = $('#app-root');
-    const btn = $('#btn-opacity-toggle');
-    const stealth = root.classList.toggle('stealth');
-    btn.textContent = stealth ? '🙉' : '🙈';
-    btn.title = stealth ? '화면 다시 보이기' : '화면 투명도 전환';
+  // ---------- opacity slider (stealth mode) ----------
+  const opacitySlider = $('#opacity-slider');
+  const opacityIcon = $('.opacity-icon');
+  opacitySlider.addEventListener('input', () => {
+    const pct = Number(opacitySlider.value);
+    $('#app-root').style.opacity = pct / 100;
+    opacityIcon.textContent = pct <= 15 ? '🙈' : (pct >= 90 ? '🙉' : '🙊');
   });
 
   // ---------- rules overlay ----------

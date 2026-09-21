@@ -49,24 +49,42 @@ body { position: relative; background: #f3f2f1; }
     repeating-linear-gradient(to bottom, #d9d9d9 0, #d9d9d9 1px, transparent 1px, transparent 22px);
 }
 
-/* ---- 투명도 토글 버튼: 위장 배경 위/게임 UI 위 어디서든 항상 보이도록 ---- */
-.opacity-toggle-btn {
+/* ---- 투명도 조절 슬라이더: 위장 배경 위/게임 UI 위 어디서든 항상 보이도록 ---- */
+.opacity-control {
   position: fixed; top: 10px; right: 10px; z-index: 999;
-  width: 34px; height: 34px; border-radius: 50%;
-  background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.25);
-  color: #fff; font-size: 16px; cursor: pointer; padding: 0;
-  display: flex; align-items: center; justify-content: center;
-  transition: background .15s ease, transform .1s ease;
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 999px; padding: 6px 14px 6px 10px;
+  backdrop-filter: blur(2px);
 }
-.opacity-toggle-btn:hover { background: rgba(0,0,0,0.55); }
-.opacity-toggle-btn:active { transform: scale(.92); }
+.opacity-icon { font-size: 14px; line-height: 1; user-select: none; }
+.opacity-control input[type="range"] {
+  -webkit-appearance: none; appearance: none;
+  width: 90px; height: 4px; border-radius: 999px;
+  background: rgba(255,255,255,0.25);
+  outline: none; cursor: pointer;
+}
+.opacity-control input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #d4af37; border: 1px solid rgba(255,255,255,0.6);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  cursor: pointer;
+}
+.opacity-control input[type="range"]::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #d4af37; border: 1px solid rgba(255,255,255,0.6);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  cursor: pointer;
+}
+.opacity-control input[type="range"]::-moz-range-track {
+  height: 4px; border-radius: 999px; background: rgba(255,255,255,0.25);
+}
 
-/* ---- 실제 게임 UI: 위장 배경 위에 올라오며, 토글로 투명도만 바뀜 ---- */
+/* ---- 실제 게임 UI: 위장 배경 위에 올라오며, 슬라이더로 투명도만 바뀜 ---- */
 #app-root {
   position: relative; z-index: 1;
-  transition: opacity .15s ease;
 }
-#app-root.stealth { opacity: 0.06; }
 
 .hidden { display: none !important; }
 
