@@ -148,9 +148,25 @@
       .map((t) => `<button type="button" class="quick-chat-btn">${t}</button>`)
       .join('');
     row.querySelectorAll('.quick-chat-btn').forEach((btn, i) => {
-      btn.addEventListener('click', () => socket.emit('chat_message', { text: QUICK_CHATS[i] }));
+      btn.addEventListener('click', () => {
+        socket.emit('chat_message', { text: QUICK_CHATS[i] });
+        hide(row);
+        $('#btn-quick-chat-toggle').classList.remove('active');
+      });
     });
   })();
+
+  $('#btn-quick-chat-toggle').addEventListener('click', () => {
+    const row = $('#quick-chat-row');
+    const isHidden = row.classList.contains('hidden');
+    if (isHidden) {
+      show(row);
+      $('#btn-quick-chat-toggle').classList.add('active');
+    } else {
+      hide(row);
+      $('#btn-quick-chat-toggle').classList.remove('active');
+    }
+  });
 
   function playerName(id) {
     if (!lastGameState) return id;
