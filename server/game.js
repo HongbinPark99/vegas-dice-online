@@ -10,10 +10,13 @@
  *    the matching casino. Turn passes to the next player with dice left.
  *  - When every player is out of dice, casinos pay out: most dice at a
  *    casino wins the highest remaining bill there, 2nd most wins the
- *    next bill, etc. A tie at a rank cancels that bill (discarded, no
- *    one gets it) and payout continues to the next rank down.
- *  - Bills nobody could claim (fewer distinct rank-groups than bills)
- *    stay on the casino and roll over into the next round.
+ *    next bill, etc. A tie at a dice-count cancels itself out (nobody
+ *    in that tied group gets anything) WITHOUT using up a bill — the
+ *    next single-highest count in line still gets the next bill.
+ *  - Bills nobody could claim stay on the casino and roll over into the
+ *    next round, and at the start of every round each casino is topped
+ *    back up (drawing from the shared pile) until it holds at least
+ *    50,000 in total.
  *  - Game is played over 4 rounds; highest total cash wins.
  */
 
@@ -46,13 +49,20 @@ function buildBillDeck() {
   return shuffle(deck);
 }
 
-function dealCasinoBills(deck) {
-  const bills = [];
-  if (deck.length) bills.push(deck.pop());
-  if (deck.length) bills.push(deck.pop());
-  const sumFirstTwo = bills.reduce((a, b) => a + b, 0);
-  if (bills.length === 2 && sumFirstTwo < 50000 && deck.length) {
-    bills.push(deck.pop());
+/** Tops a casino's bills up so its total is at least 50,000 (the official
+ * resupply rule), drawing one bill at a time from the shared deck. Called both
+ * for the initial round-1 setup and again at the start of every later round —
+ * previously this only ever ran once at game creation, which is why every
+ * casino except one that happened to carry money over stayed empty ("없음")
+ * for the rest of the game. Casinos that already carried money over from a
+ * previous round only get topped up by however much is still short of 50,000. */
+function resupplyCasino(existingBills, deck) {
+  const bills = existingBills.slice();
+  let total = bills.reduce((a, b) => a + b, 0);
+  while (total < 50000 && deck.length) {
+    const bill = deck.pop();
+    bills.push(bill);
+    total += bill;
   }
   return bills;
 }
@@ -66,10 +76,12 @@ class VegasGame {
     if (players.length < 2 || players.length > PLAYER_COLORS.length + DUMMY_COLORS.length) {
       throw new Error('플레이어는 2~6명이어야 합니다.');
     }
-    const deck = buildBillDeck();
+    // Kept for the whole game (not just round 1) so every later round can
+    // keep drawing from the same shared pile when resupplying casinos.
+    this.billDeck = buildBillDeck();
     this.casinos = Array.from({ length: CASINO_COUNT }, (_, i) => ({
       number: i + 1,
-      bills: dealCasinoBills(deck),
+      bills: resupplyCasino([], this.billDeck),
     }));
 
     this.turnOrder = shuffle(players.map((p) => p.id));
@@ -97,7 +109,7 @@ class VegasGame {
     this.currentRoll = null; // array of die values rolled by current player, awaiting choice
     this.phase = 'awaiting_roll'; // 'awaiting_roll' | 'awaiting_choice' | 'round_end' | 'game_over'
     this.log = [];
-    this.lastPayout = null; // set at round end: { round, casinos: [{number, awards:[{playerId,amount}], discarded:[amount], carried:[amount]}] }
+    this.lastPayout = null; // set at round end: { round, casinos: [{number, awards:[{playerId,amount,dice}], ties:[{dice,playerIds}], carried:[amount]}] }
     this.winnerIds = null;
 
     this._advanceToNextActivePlayer(true);
@@ -215,7 +227,7 @@ class VegasGame {
         .filter((c) => c.count > 0);
 
       const bills = casino.bills.slice().sort((a, b) => b - a);
-      const entry = { number: casino.number, awards: [], discarded: [], carried: [] };
+      const entry = { number: casino.number, awards: [], ties: [], carried: [] };
 
       if (contenders.length === 0 || bills.length === 0) {
         entry.carried = bills;
@@ -229,24 +241,34 @@ class VegasGame {
         if (!groups.has(c.count)) groups.set(c.count, []);
         groups.get(c.count).push(c.playerId);
       });
-      const countsDesc = [...groups.keys()].sort((a, b) => b - a);
+
+      // A tied dice-count cancels out entirely: those players just take their
+      // dice back and get nothing. Crucially, a tie does NOT use up a bill —
+      // the previous implementation destroyed one bill per tie, which quietly
+      // shorted whoever was next in line and made payouts look "off".
+      const tiedCounts = [...groups.keys()].filter((c) => groups.get(c).length > 1).sort((a, b) => b - a);
+      tiedCounts.forEach((count) => {
+        const ids = groups.get(count);
+        entry.ties.push({ dice: count, playerIds: ids });
+        const names = ids.map((pid) => this.players[pid].name).join(', ');
+        this._pushLog(`${casino.number}번 카지노: ${names}이(가) 동점(주사위 ${count}개)으로 아무것도 받지 못했습니다.`);
+      });
+
+      // Only counts held by exactly one player are ranked, most dice first,
+      // and bills are handed out to them in that order.
+      const rankedCounts = [...groups.keys()].filter((c) => groups.get(c).length === 1).sort((a, b) => b - a);
 
       let billIdx = 0;
-      for (const count of countsDesc) {
-        if (billIdx >= bills.length) break;
-        const group = groups.get(count);
+      rankedCounts.forEach((count) => {
+        if (billIdx >= bills.length) return;
+        const pid = groups.get(count)[0];
         const bill = bills[billIdx];
-        if (group.length === 1) {
-          const pid = group[0];
-          this.players[pid].money += bill;
-          entry.awards.push({ playerId: pid, amount: bill, dice: count });
-          this._pushLog(`${this.players[pid].name}이(가) ${casino.number}번 카지노에서 ${bill.toLocaleString()}원을 획득했습니다. (주사위 ${count}개)`);
-        } else {
-          entry.discarded.push(bill);
-          this._pushLog(`${casino.number}번 카지노 ${bill.toLocaleString()}원 지폐는 동점(${group.length}명, 주사위 ${count}개)으로 소멸되었습니다.`);
-        }
+        this.players[pid].money += bill;
+        entry.awards.push({ playerId: pid, amount: bill, dice: count });
+        this._pushLog(`${this.players[pid].name}이(가) ${casino.number}번 카지노에서 ${bill.toLocaleString()}원을 획득했습니다. (주사위 ${count}개)`);
         billIdx++;
-      }
+      });
+
       entry.carried = bills.slice(billIdx);
       casino.bills = entry.carried;
       results.push(entry);
@@ -269,7 +291,14 @@ class VegasGame {
       p.diceRemaining = DICE_PER_PLAYER;
       p.placed = {};
     });
-    this._pushLog(`--- ${this.round}라운드 시작 ---`);
+    // Every casino gets topped back up to at least 50,000 won at the start of
+    // each round, carrying over whatever money it already had. This used to
+    // only happen once at game creation, leaving most casinos permanently
+    // empty after round 1.
+    this.casinos.forEach((casino) => {
+      casino.bills = resupplyCasino(casino.bills, this.billDeck);
+    });
+    this._pushLog(`--- ${this.round}라운드 시작 (카지노 상금 보충 완료) ---`);
     this._advanceToNextActivePlayer(true);
   }
 

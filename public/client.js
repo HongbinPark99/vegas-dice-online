@@ -53,6 +53,11 @@
     return n.toLocaleString() + '원';
   }
 
+  // ---------- rules overlay ----------
+  $('#btn-rules-landing').addEventListener('click', () => show($('#overlay-rules')));
+  $('#btn-rules-game').addEventListener('click', () => show($('#overlay-rules')));
+  $('#btn-rules-close').addEventListener('click', () => hide($('#overlay-rules')));
+
   // ---------- landing ----------
   $('#btn-create').addEventListener('click', () => {
     const name = $('#input-name').value.trim();
@@ -130,6 +135,22 @@
     socket.emit('chat_message', { text });
     input.value = '';
   }
+
+  // ---------- quick chat (Vegas-flavored emoji shortcuts) ----------
+  const QUICK_CHATS = [
+    '🎲 가보자!', '👀 이거 가지고 가?', '🔥 대박', '😂 ㅋㅋㅋ', '💰 개꿀', '😱 헐',
+    '🙏 살려줘', '👍 굿', '😢 망했다', '🍀 행운을 빌어',
+    '1️⃣ 1번 ㄱㄱ', '2️⃣ 2번 ㄱㄱ', '3️⃣ 3번 ㄱㄱ', '4️⃣ 4번 ㄱㄱ', '5️⃣ 5번 ㄱㄱ', '6️⃣ 6번 ㄱㄱ',
+  ];
+  (function renderQuickChat() {
+    const row = $('#quick-chat-row');
+    row.innerHTML = QUICK_CHATS
+      .map((t) => `<button type="button" class="quick-chat-btn">${t}</button>`)
+      .join('');
+    row.querySelectorAll('.quick-chat-btn').forEach((btn, i) => {
+      btn.addEventListener('click', () => socket.emit('chat_message', { text: QUICK_CHATS[i] }));
+    });
+  })();
 
   function playerName(id) {
     if (!lastGameState) return id;
@@ -324,24 +345,52 @@
 
     $('#overlay-round-title').textContent = `${state.lastPayout.round}라운드 결과`;
     const body = $('#overlay-round-body');
-    body.innerHTML = state.lastPayout.casinos.map((c, ci) => {
+
+    const roundGains = {}; // playerId -> total won this round, for the summary below
+
+    const casinoHtml = state.lastPayout.casinos.map((c, ci) => {
       const lines = [];
       let li = 0;
       c.awards.forEach((a) => {
-        lines.push(`<div class="payout-line" style="animation-delay:${li * 90}ms"><span>${playerName(a.playerId)} (🎲${a.dice})</span><span class="amount-chip">${fmtMoney(a.amount)}</span></div>`);
+        roundGains[a.playerId] = (roundGains[a.playerId] || 0) + a.amount;
+        lines.push(`<div class="payout-line" style="animation-delay:${li * 90}ms">
+            <span>🏆 ${playerName(a.playerId)}<span class="dice-tag">🎲${a.dice}</span></span>
+            <span class="amount-chip">${fmtMoney(a.amount)}</span>
+          </div>`);
         li++;
       });
-      c.discarded.forEach((d) => {
-        lines.push(`<div class="payout-line discard" style="animation-delay:${li * 90}ms"><span>동점 소멸</span><span class="amount-chip">${fmtMoney(d)}</span></div>`);
+      c.ties.forEach((t) => {
+        const names = t.playerIds.map((pid) => playerName(pid)).join(', ');
+        lines.push(`<div class="payout-line discard" style="animation-delay:${li * 90}ms">
+            <span>🤝 ${names}<span class="dice-tag">🎲${t.dice} 동점 · 못 받음</span></span>
+            <span class="amount-chip">-</span>
+          </div>`);
         li++;
       });
       c.carried.forEach((cv) => {
-        lines.push(`<div class="payout-line carry" style="animation-delay:${li * 90}ms"><span>다음 라운드로 이월</span><span class="amount-chip">${fmtMoney(cv)}</span></div>`);
+        lines.push(`<div class="payout-line carry" style="animation-delay:${li * 90}ms"><span>➡️ 다음 라운드로 이월</span><span class="amount-chip">${fmtMoney(cv)}</span></div>`);
         li++;
       });
       if (lines.length === 0) lines.push('<div class="payout-line" style="opacity:1"><span>참가자 없음</span><span>-</span></div>');
       return `<div class="payout-casino" style="animation-delay:${ci * 80}ms"><div class="title">${c.number}번 카지노</div>${lines.join('')}</div>`;
     }).join('');
+
+    // A clear per-player summary at the bottom so it's obvious at a glance who
+    // actually got money this round and how much, instead of only reading it
+    // out of the six separate casino boxes above.
+    const summaryHtml = state.players.map((p) => {
+      const gained = roundGains[p.id] || 0;
+      return `<div class="payout-line${gained > 0 ? '' : ' discard'}">
+          <span>${p.name}${p.id === myId ? ' (나)' : ''}</span>
+          <span class="amount-chip">${gained > 0 ? '+' + fmtMoney(gained) : '이번 라운드 획득 없음'}</span>
+        </div>`;
+    }).join('');
+
+    body.innerHTML = `<div class="payout-grid">${casinoHtml}</div>
+      <div class="payout-summary">
+        <div class="title">💵 이번 라운드 획득 요약</div>
+        ${summaryHtml}
+      </div>`;
 
     if (state.round >= state.totalRounds) {
       // game_over will handle final overlay instead

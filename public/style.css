@@ -52,6 +52,7 @@ html, body {
   opacity: .65;
 }
 .subtitle { color: #b9c9bb; font-size: 13px; margin-bottom: 24px; margin-top: 14px; }
+.rules-link { margin-bottom: 20px; }
 .field { text-align: left; margin-bottom: 16px; }
 .field label { display:block; font-size: 12px; color: #b9c9bb; margin-bottom: 4px; }
 .field input, .join-row input {
@@ -121,6 +122,7 @@ html, body {
   box-shadow: 0 2px 8px rgba(212,175,55,0.35);
 }
 .turn-indicator { font-size: 15px; font-weight: 700; }
+.header-actions { display: flex; gap: 8px; }
 .game-main { display: flex; gap: 16px; padding: 16px; align-items: flex-start; }
 
 .casino-board {
@@ -274,6 +276,21 @@ html, body {
 .chat-input-row { display: flex; gap: 6px; }
 .chat-input-row input { flex: 1; padding: 6px 8px; border-radius: 8px; border: 1px solid #2f5b45; background: #0f2a1e; color: #f2e9d8; font-family: inherit; }
 
+.quick-chat-row {
+  display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+.quick-chat-row::-webkit-scrollbar { height: 5px; }
+.quick-chat-row::-webkit-scrollbar-thumb { background: rgba(212,175,55,0.35); border-radius: 4px; }
+.quick-chat-btn {
+  flex: 0 0 auto; font-family: inherit; cursor: pointer;
+  background: #123a29; border: 1px solid rgba(212,175,55,0.25); color: #e3ecdf;
+  border-radius: 999px; padding: 5px 11px; font-size: 12px; white-space: nowrap;
+  transition: background .15s ease, border-color .15s ease, transform .1s ease;
+}
+.quick-chat-btn:hover { background: rgba(212,175,55,0.18); border-color: #d4af37; }
+.quick-chat-btn:active { transform: scale(.94); }
+
 /* ---- Overlays ---- */
 .overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,0.72); backdrop-filter: blur(2px);
@@ -304,6 +321,23 @@ html, body {
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.5);
 }
 .payout-line.discard .amount-chip, .payout-line.carry .amount-chip { background: linear-gradient(135deg, #7a8f80, #4a5f52); color: #eef4ee; }
+.dice-tag { font-size: 11px; color: #93a897; margin-left: 4px; }
+
+.payout-summary {
+  margin-top: 16px; padding-top: 14px; border-top: 1px dashed rgba(212,175,55,0.35);
+  text-align: left;
+}
+.payout-summary .title { color: #d4af37; font-weight: 700; margin-bottom: 8px; font-size: 13px; }
+.payout-summary .payout-line { padding: 4px 2px; }
+.payout-summary .payout-line.discard { color: #93a897; }
+
+.rules-card { text-align: left; max-width: 560px; }
+.rules-card h2 { text-align: center; }
+.rules-body { font-size: 13px; line-height: 1.65; color: #dce8dc; margin: 14px 0; }
+.rules-body h3 { color: #d4af37; font-size: 13px; margin: 14px 0 6px; }
+.rules-body h3:first-child { margin-top: 0; }
+.rules-body ul { margin: 0 0 4px; padding-left: 20px; }
+.rules-body li { margin-bottom: 4px; }
 
 .final-row {
   display: flex; justify-content: space-between; padding: 9px 14px; border-radius: 10px; margin-bottom: 6px;

@@ -63,7 +63,7 @@ async function main() {
       console.log(`--- Round ${gs.lastPayout.round} payout ---`);
       gs.lastPayout.casinos.forEach(c => {
         c.awards.forEach(a => console.log(`  casino ${c.number}: ${a.playerId} won ${a.amount}`));
-        c.discarded.forEach(d => console.log(`  casino ${c.number}: DISCARDED ${d}`));
+        c.ties.forEach(t => console.log(`  casino ${c.number}: TIE among ${t.playerIds.join(',')} (dice ${t.dice}) - no payout, no bill lost`));
         c.carried.forEach(cv => console.log(`  casino ${c.number}: carried ${cv}`));
       });
       sockets[0].emit('next_round');

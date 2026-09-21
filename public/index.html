@@ -18,6 +18,7 @@
   <div class="landing-card">
     <h1>🎲 VEGAS DICE <span>ONLINE</span></h1>
     <p class="subtitle">라스베가스 다이스 보드게임 — 친구들과 온라인 멀티플레이</p>
+    <button id="btn-rules-landing" class="btn btn-small rules-link">📖 게임 규칙 보기</button>
 
     <div class="field">
       <label>닉네임</label>
@@ -56,7 +57,10 @@
   <header class="game-header">
     <div class="round-badge">ROUND <span id="round-num">1</span> / <span id="round-total">4</span></div>
     <div id="turn-indicator" class="turn-indicator">-</div>
-    <button id="btn-leave" class="btn btn-small">나가기</button>
+    <div class="header-actions">
+      <button id="btn-rules-game" class="btn btn-small">📖 규칙</button>
+      <button id="btn-leave" class="btn btn-small">나가기</button>
+    </div>
   </header>
 
   <main class="game-main">
@@ -71,27 +75,58 @@
         <div id="waiting-msg" class="waiting-msg hidden">다른 플레이어의 차례입니다...</div>
       </div>
 
-      <div class="log-panel">
-        <div class="log-title">진행 로그</div>
-        <div id="log-list" class="log-list"></div>
-      </div>
-
       <div class="chat-panel">
+        <div id="quick-chat-row" class="quick-chat-row"></div>
         <div id="chat-list" class="chat-list"></div>
         <div class="chat-input-row">
           <input id="input-chat" type="text" maxlength="300" placeholder="채팅..." />
           <button id="btn-chat-send" class="btn btn-small">전송</button>
         </div>
       </div>
+
+      <div class="log-panel">
+        <div class="log-title">진행 로그</div>
+        <div id="log-list" class="log-list"></div>
+      </div>
     </aside>
   </main>
 </section>
+
+<!-- ===== 룰 설명 오버레이 ===== -->
+<div id="overlay-rules" class="overlay hidden">
+  <div class="overlay-card rules-card">
+    <h2>🎲 라스베가스 다이스 — 간단 룰</h2>
+    <div class="rules-body">
+      <h3>🎯 목표</h3>
+      <ul>
+        <li>4라운드 동안 6개 카지노에서 돈을 가장 많이 모으면 승리!</li>
+      </ul>
+      <h3>🎲 진행 방법</h3>
+      <ul>
+        <li>내 차례에 남은 주사위를 전부 굴려요 (처음엔 8개).</li>
+        <li>나온 숫자 중 하나를 골라, 그 숫자가 나온 주사위 <b>전부</b>를 같은 번호의 카지노에 놓아요.</li>
+        <li>주사위가 다 떨어질 때까지 전원이 번갈아 진행해요.</li>
+      </ul>
+      <h3>💰 정산 방법</h3>
+      <ul>
+        <li>모두 주사위를 다 놓으면, 카지노마다 <b>가장 많이 놓은 사람</b>이 가장 비싼 지폐를, 그 다음으로 많이 놓은 사람이 다음 지폐를 가져가요.</li>
+        <li>같은 개수로 놓아 <b>동점</b>이 나면 그 인원은 아무것도 못 받아요 (돈은 사라지지 않고 카지노에 그대로 남아요).</li>
+        <li>못 가져간 돈은 다음 라운드로 이월되고, 라운드가 시작될 때마다 모든 카지노는 최소 5만원이 되도록 다시 채워져요.</li>
+      </ul>
+      <h3>🤖 2~3인 플레이</h3>
+      <ul>
+        <li>밸런스를 위해 "더미" 가상 플레이어가 자동으로 함께 참가해요 (2인: 더미 2명, 3인: 더미 1명).</li>
+      </ul>
+    </div>
+    <button id="btn-rules-close" class="btn btn-primary">확인했어요</button>
+  </div>
+</div>
 
 <!-- ===== 라운드 종료 오버레이 ===== -->
 <div id="overlay-round" class="overlay hidden">
   <div class="overlay-card">
     <h2 id="overlay-round-title">1라운드 결과</h2>
-    <div id="overlay-round-body" class="payout-grid"></div>
+    <div id="overlay-round-body"></div>
     <button id="btn-next-round" class="btn btn-primary">다음 라운드</button>
   </div>
 </div>
