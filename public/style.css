@@ -130,25 +130,33 @@ html, body {
   gap: 16px;
 }
 .casino {
-  background: radial-gradient(ellipse at 50% 0%, #163c28 0%, #0e2a1b 70%);
-  border: 2px solid #2f5b45;
+  --accent: #d4af37;
+  background: radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--accent) 26%, #163c28 74%) 0%, color-mix(in srgb, var(--accent) 12%, #0e2a1b 88%) 70%);
+  border: 2px solid color-mix(in srgb, var(--accent) 50%, #2f5b45 50%);
   border-radius: 16px;
   padding: 12px;
   min-height: 190px;
   position: relative;
-  box-shadow: inset 0 0 18px rgba(0,0,0,0.35), 0 3px 10px rgba(0,0,0,0.3);
-  transition: transform .18s ease, border-color .3s ease;
+  box-shadow: inset 0 0 18px rgba(0,0,0,0.35), 0 3px 10px rgba(0,0,0,0.3), 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent);
+  transition: transform .18s ease, border-color .3s ease, box-shadow .3s ease;
 }
 .casino:hover { transform: translateY(-2px); }
 .casino.pulse { animation: casinoPulse .9s ease; }
+/* Each of the six casinos gets its own accent so the board reads at a glance */
+.casino[data-casino="1"] { --accent: #e0555f; }
+.casino[data-casino="2"] { --accent: #e2914a; }
+.casino[data-casino="3"] { --accent: #d3c948; }
+.casino[data-casino="4"] { --accent: #4fbf82; }
+.casino[data-casino="5"] { --accent: #4f9fe0; }
+.casino[data-casino="6"] { --accent: #a97fe0; }
 .casino-num {
   position: absolute; top: -16px; left: 12px;
-  background: radial-gradient(circle at 30% 25%, #ffe9a8, #d4af37 55%, #9c7420);
-  color: #241a06; font-weight: 800;
+  background: radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--accent) 55%, #fff 45%), var(--accent) 55%, color-mix(in srgb, var(--accent) 65%, #000 35%));
+  color: #1a1206; font-weight: 800;
   width: 30px; height: 30px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   border: 2px solid #0e2a1b;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.6);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.6), 0 0 12px color-mix(in srgb, var(--accent) 55%, transparent);
   font-size: 14px;
 }
 .casino-bills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 18px; perspective: 400px; }
@@ -171,24 +179,29 @@ html, body {
 .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; box-shadow: 0 0 4px rgba(0,0,0,0.4); }
 .die-mini {
   min-width: 20px; height: 20px; padding: 0 4px; border-radius: 6px;
-  background: linear-gradient(160deg, #fffdf7, #ecdfba);
-  color: #241a06; border: 1px solid #b9872b;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--pc, #d4af37) 55%, #fff 45%), color-mix(in srgb, var(--pc, #d4af37) 85%, #000 15%));
+  color: #fff; text-shadow: 0 1px 1px rgba(0,0,0,0.45); border: 1px solid color-mix(in srgb, var(--pc, #d4af37) 55%, #b9872b 45%);
   font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.35);
 }
 
 .side-panel { width: 320px; display: flex; flex-direction: column; gap: 12px; }
-.players-panel { background: #0f2a1e; border: 1px solid #2f5b45; border-radius: 14px; padding: 10px; }
-.player-row { display: flex; align-items: center; gap: 8px; padding: 7px 6px; border-radius: 10px; transition: background .2s ease; }
+.players-panel { background: #0f2a1e; border: 1px solid #2f5b45; border-radius: 14px; padding: 10px; display: flex; flex-direction: column; gap: 3px; }
+.player-row { display: flex; align-items: center; gap: 9px; padding: 7px 8px; border-radius: 10px; transition: background .2s ease; }
 .player-row.active {
   background: rgba(212,175,55,0.16);
   box-shadow: inset 0 0 0 1px rgba(212,175,55,0.5);
   animation: rowGlow 1.8s ease-in-out infinite;
 }
-.player-swatch { width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 6px currentColor; }
+.player-swatch {
+  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  box-shadow: 0 0 7px color-mix(in srgb, var(--pc, #d4af37) 65%, transparent), inset 0 1px 1px rgba(255,255,255,0.4), inset 0 -2px 4px rgba(0,0,0,0.25);
+}
 .player-name { font-weight: 600; flex: 1; font-size: 13px; }
-.player-money { font-size: 13px; color: #d4af37; font-weight: 700; }
-.player-dice { font-size: 11px; color: #93a897; margin-left: 6px; }
+.player-money { font-size: 13px; color: #d4af37; font-weight: 700; font-variant-numeric: tabular-nums; }
+.player-dice { font-size: 11px; color: #93a897; margin-left: 2px; }
 
 .action-panel { background: #0f2a1e; border: 1px solid #2f5b45; border-radius: 14px; padding: 14px 12px; text-align: center; }
 
@@ -197,16 +210,17 @@ html, body {
 
 .die-pip {
   width: 42px; height: 42px; border-radius: 10px; padding: 5px; flex-shrink: 0;
-  background: linear-gradient(150deg, #fffdf7, #eee3c8);
-  border: 2px solid #d4af37;
-  box-shadow: inset 0 2px 0 rgba(255,255,255,0.7), inset 0 -3px 5px rgba(0,0,0,0.15), 0 3px 7px rgba(0,0,0,0.35);
+  background: linear-gradient(150deg, color-mix(in srgb, var(--pc, #d4af37) 50%, #fff 50%), color-mix(in srgb, var(--pc, #d4af37) 88%, #000 12%));
+  border: 2px solid color-mix(in srgb, var(--pc, #d4af37) 55%, #d4af37 45%);
+  box-shadow: inset 0 2px 0 rgba(255,255,255,0.45), inset 0 -3px 5px rgba(0,0,0,0.2), 0 3px 7px rgba(0,0,0,0.35), 0 0 10px color-mix(in srgb, var(--pc, #d4af37) 45%, transparent);
 }
 .die-pip.small { width: 26px; height: 26px; padding: 3px; border-radius: 7px; }
 .pip-grid { width: 100%; height: 100%; display: grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(3,1fr); }
 .pip-grid .pip { width: 0; height: 0; place-self: center; border-radius: 50%; }
 .pip-grid .pip.on {
   width: 6px; height: 6px;
-  background: radial-gradient(circle at 30% 30%, #4a3a1c, #16260f 70%);
+  background: radial-gradient(circle at 30% 30%, #ffffff, #f3ead0 75%);
+  box-shadow: 0 0 2px rgba(0,0,0,0.4);
   place-self: center;
 }
 .die-pip.small .pip-grid .pip.on { width: 4px; height: 4px; }
